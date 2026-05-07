@@ -70,7 +70,8 @@ public static class BackendModules
         new Backend.SMBBackend(),
         new Backend.CIFSBackend(),
         new Backend.Filen.FilenBackend(),
-        new Backend.Filejump()
+        new Backend.Filejump(),
+        new Backend.DrimeCloud.DrimeBackend(),
     }
     .Concat(Proprietary.LoaderHelper.BackendModules.LicensedBackendModules)
 
