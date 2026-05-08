@@ -226,6 +226,9 @@ namespace Duplicati.Library.Main.Volumes
             using var hashalg = HashFactory.CreateHasher(blockHashAlgorithm);
             using var fs = compression.OpenRead(filename);
 
+            if (fs == null)
+                throw new InvalidDataException($"Blocklist file {filename} not found in archive");
+
             int s;
             var read = 0L;
             while ((s = Library.Utility.Utility.ForceStreamRead(fs, buffer, buffer.Length)) != 0)
