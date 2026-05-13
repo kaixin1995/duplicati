@@ -140,7 +140,7 @@ partial class BackendManager
                         {
                             await streamingBackend.GetAsync(RemoteFilename, pgs, cancelToken).ConfigureAwait(false);
                         }
-                        ss.Flush();
+                        await ss.FlushAsync();
                         retDownloadSize = ss.TotalBytesWritten;
                         retHashcode = Convert.ToBase64String(hs.GetFinalHash());
                     }

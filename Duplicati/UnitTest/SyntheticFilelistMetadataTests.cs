@@ -242,7 +242,7 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count(), "First backup should succeed");
             }
 
@@ -277,8 +277,8 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller(failtarget, options, null))
             {
-                Assert.Throws<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
-                    c.Backup(new[] { this.DATAFOLDER }));
+                Assert.ThrowsAsync<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
+                    c.BackupAsync(new[] { this.DATAFOLDER }));
             }
 
             Assert.IsTrue(failed, "Expected dlist upload to fail");
@@ -296,7 +296,7 @@ namespace Duplicati.UnitTest
             // for the interrupted backup, then continue with the new backup.
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count(), "Recovery backup should succeed");
             }
 
@@ -355,7 +355,7 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count());
             }
 
@@ -377,8 +377,8 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller(failtarget, options, null))
             {
-                Assert.Throws<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
-                    c.Backup(new[] { this.DATAFOLDER }));
+                Assert.ThrowsAsync<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
+                    c.BackupAsync(new[] { this.DATAFOLDER }));
             }
 
             Assert.IsTrue(failed, "Expected dlist upload to fail");
@@ -387,7 +387,7 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count());
             }
 
@@ -400,7 +400,7 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller("file://" + this.TARGETFOLDER, testOptions, null))
             {
-                var testRes = c.Test(long.MaxValue);
+                var testRes = await c.TestAsync(long.MaxValue);
                 Assert.AreEqual(0, testRes.Errors.Count(),
                     "Test operation should not fail. Errors indicate synthetic filelist metadata is missing.");
             }
@@ -449,7 +449,7 @@ namespace Duplicati.UnitTest
             // 1. Successful initial backup → FS1 with FilesetEntry → F2 (testfile.txt)
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count(), "First backup should succeed");
             }
             DumpDatabaseState(this.DBFILE, "After first successful backup");
@@ -468,8 +468,8 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller(failtarget, options, null))
             {
-                Assert.Throws<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
-                    c.Backup(new[] { this.DATAFOLDER }),
+                Assert.ThrowsAsync<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
+                    c.BackupAsync(new[] { this.DATAFOLDER }),
                     "Interrupted backup should fail at the dlist upload");
             }
             DumpDatabaseState(this.DBFILE, "After interrupted backup");
@@ -495,11 +495,11 @@ namespace Duplicati.UnitTest
             await using (var db = await TestDatabase.CreateAsync(this.DBFILE, default).ConfigureAwait(false))
             {
                 long interruptedFilesetId = -1;
-                await foreach (var fs in db.GetIncompleteFilesets(default).ConfigureAwait(false))
+                await foreach (var fs in db.GetIncompleteFilesetsAsync(default).ConfigureAwait(false))
                     interruptedFilesetId = fs.Key;
                 Assert.That(interruptedFilesetId, Is.GreaterThan(0),
                     "Should have located the interrupted fileset");
-                interruptedDlistName = (await db.GetRemoteVolumeFromFilesetID(interruptedFilesetId, default).ConfigureAwait(false)).Name;
+                interruptedDlistName = (await db.GetRemoteVolumeFromFilesetIDAsync(interruptedFilesetId, default).ConfigureAwait(false)).Name;
 
                 // Find the FilesetEntry for testfile.txt in the interrupted
                 // fileset. There should be exactly one such row (one for the
@@ -537,7 +537,7 @@ namespace Duplicati.UnitTest
             await using (var db = await TestDatabase.CreateAsync(this.DBFILE, default).ConfigureAwait(false))
             {
                 TestContext.Progress.WriteLine($"Removing dblock from DB: {Path.GetFileName(dblockToRemove)}");
-                await db.RemoveRemoteVolumes(new[] { Path.GetFileName(dblockToRemove) }, default)
+                await db.RemoveRemoteVolumesAsync(new[] { Path.GetFileName(dblockToRemove) }, default)
                     .ConfigureAwait(false);
                 await db.Transaction.CommitAsync("test-remove-dblock", true, default).ConfigureAwait(false);
             }
@@ -559,7 +559,7 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count(), "Recovery backup should succeed");
             }
             DumpDatabaseState(this.DBFILE, "After recovery backup");
@@ -593,7 +593,7 @@ namespace Duplicati.UnitTest
             };
             using (var c = new Controller("file://" + this.TARGETFOLDER, testOptions, null))
             {
-                var testRes = c.Test(long.MaxValue);
+                var testRes = await c.TestAsync(long.MaxValue);
                 Assert.AreEqual(0, testRes.Errors.Count(),
                     "Test operation should not fail after recovery from the interrupted backup");
             }
@@ -628,7 +628,7 @@ namespace Duplicati.UnitTest
             // 1. Complete backup
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count());
             }
 
@@ -652,8 +652,8 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller(failtarget, options, null))
             {
-                Assert.Throws<DeterministicErrorBackend.DeterministicErrorBackendException>(() =>
-                    c.Backup(new[] { this.DATAFOLDER }));
+                Assert.Throws<DeterministicErrorBackend.DeterministicErrorBackendException>(async () =>
+                    await c.BackupAsync(new[] { this.DATAFOLDER }));
             }
             Assert.IsTrue(failed, "Expected dlist upload to fail");
 
@@ -666,7 +666,7 @@ namespace Duplicati.UnitTest
             //    that are no longer referenced by any remaining fileset.
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var filesets = c.List().Filesets.ToList();
+                var filesets = (await c.ListAsync()).Filesets.ToList();
                 Assert.That(filesets.Count, Is.GreaterThanOrEqualTo(1), "Should have at least one complete fileset to delete");
             }
 
@@ -677,7 +677,7 @@ namespace Duplicati.UnitTest
             };
             using (var c = new Controller("file://" + this.TARGETFOLDER, deleteOptions, null))
             {
-                var delRes = c.Delete();
+                var delRes = await c.DeleteAsync();
                 Assert.AreEqual(0, delRes.Errors.Count(), "Delete should succeed");
             }
 
@@ -689,7 +689,7 @@ namespace Duplicati.UnitTest
             //    interrupted backup even though the previous complete backup was deleted.
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                var res = c.Backup(new[] { this.DATAFOLDER });
+                var res = await c.BackupAsync(new[] { this.DATAFOLDER });
                 Assert.AreEqual(0, res.Errors.Count(), "Recovery backup should succeed");
             }
 
@@ -723,7 +723,7 @@ namespace Duplicati.UnitTest
 
             using (var c = new Controller("file://" + this.TARGETFOLDER, testOptions, null))
             {
-                var testRes = c.Test(long.MaxValue);
+                var testRes = await c.TestAsync(long.MaxValue);
                 Assert.AreEqual(0, testRes.Errors.Count(),
                     "Test operation should not fail after recovery and delete workflow.");
             }
