@@ -87,7 +87,7 @@ public static class RemoteSynchronizationRunner
         {
             var config_with_args = config with { Dst = backend_dst, Src = backend_src };
 
-            return Run(config_with_args, token);
+            return RunAsync(config_with_args, token);
         });
 
         return await root_cmd.InvokeAsync(args).ConfigureAwait(false);
@@ -101,7 +101,7 @@ public static class RemoteSynchronizationRunner
     /// <param name="progressUpdater">Optional progress updater for reporting file count and transfer progress to the UI.</param>
     /// <param name="backendProgressUpdater">Optional backend progress updater for reporting transfer speed to the UI.</param>
     /// <returns>The return code (0 on success).</returns>
-    internal static async Task<int> Run(RemoteSynchronizationConfig config, CancellationToken token, IOperationProgressUpdater? progressUpdater = null, IBackendProgressUpdater? backendProgressUpdater = null, IBasicResults? results = null)
+    internal static async Task<int> RunAsync(RemoteSynchronizationConfig config, CancellationToken token, IOperationProgressUpdater? progressUpdater = null, IBackendProgressUpdater? backendProgressUpdater = null, IBasicResults? results = null)
     {
         // Parse the log level
         var log_level_parsed = Enum.TryParse<Duplicati.Library.Logging.LogMessageType>(config.LogLevel, true, out var log_level_enum);
@@ -131,7 +131,7 @@ public static class RemoteSynchronizationRunner
                 // Start the logging scope with both file logging and message capture
                 using var scope = Duplicati.Library.Logging.Log.StartScope(multi_log_target.WriteMessage);
 
-                return await RunCore(config, token, progressUpdater, backendProgressUpdater, rsyncResults).ConfigureAwait(false);
+                return await RunCoreAsync(config, token, progressUpdater, backendProgressUpdater, rsyncResults).ConfigureAwait(false);
             }
             else
             {
@@ -140,7 +140,7 @@ public static class RemoteSynchronizationRunner
                 // Start the logging scope
                 using var _ = Duplicati.Library.Logging.Log.StartScope(multi_sink, log_level_enum);
 
-                return await RunCore(config, token, progressUpdater, backendProgressUpdater).ConfigureAwait(false);
+                return await RunCoreAsync(config, token, progressUpdater, backendProgressUpdater).ConfigureAwait(false);
             }
         }
         else
@@ -151,11 +151,11 @@ public static class RemoteSynchronizationRunner
                 using var log_target = new ControllerMultiLogTarget(rsyncResults, log_level_enum, null, null);
                 using var scope = Duplicati.Library.Logging.Log.StartScope(log_target.WriteMessage);
 
-                return await RunCore(config, token, progressUpdater, backendProgressUpdater, rsyncResults).ConfigureAwait(false);
+                return await RunCoreAsync(config, token, progressUpdater, backendProgressUpdater, rsyncResults).ConfigureAwait(false);
             }
             else
             {
-                return await RunCore(config, token, progressUpdater, backendProgressUpdater).ConfigureAwait(false);
+                return await RunCoreAsync(config, token, progressUpdater, backendProgressUpdater).ConfigureAwait(false);
             }
         }
     }
@@ -168,7 +168,7 @@ public static class RemoteSynchronizationRunner
     /// <param name="progressUpdater">Optional progress updater for reporting file count and transfer progress to the UI.</param>
     /// <param name="backendProgressUpdater">Optional backend progress updater for reporting transfer speed to the UI.</param>
     /// <returns>The return code (0 on success).</returns>
-    private static async Task<int> RunCore(RemoteSynchronizationConfig config, CancellationToken token, IOperationProgressUpdater? progressUpdater = null, IBackendProgressUpdater? backendProgressUpdater = null, RemoteSynchronizationResults? results = null)
+    private static async Task<int> RunCoreAsync(RemoteSynchronizationConfig config, CancellationToken token, IOperationProgressUpdater? progressUpdater = null, IBackendProgressUpdater? backendProgressUpdater = null, RemoteSynchronizationResults? results = null)
     {
         // Unpack and parse the multi token options
         var global_options = ParseOptions(config.GlobalOptions);
@@ -196,7 +196,7 @@ public static class RemoteSynchronizationRunner
         using var b2m = new LightWeightBackendManager(config.Dst, dst_opts, config.BackendRetries, config.BackendRetryDelay, config.BackendRetryWithExponentialBackoff, progressUpdater: progressUpdater, backendProgressUpdater: backendProgressUpdater);
 
         // Prepare the operations
-        var (to_copy, to_delete, to_verify) = await PrepareFileLists(b1m, b2m, config, token).ConfigureAwait(false);
+        var (to_copy, to_delete, to_verify) = await PrepareFileListsAsync(b1m, b2m, config, token).ConfigureAwait(false);
         var disableQuota = Library.Utility.Utility.ParseBoolOption(dst_opts, "quota-disable");
 
         // Check if we have enough free space in the destination to perform the synchronization.
@@ -684,7 +684,7 @@ public static class RemoteSynchronizationRunner
     /// <param name="config">The parsed configuration for the tool.</param>
     /// <param name="token">The cancellation token to use for the asynchronous operations.</param>
     /// <returns>A tuple of Lists each holding the files to copy, delete and verify.</returns>
-    private static async Task<(IEnumerable<IFileEntry>, IEnumerable<IFileEntry>, IEnumerable<IFileEntry>)> PrepareFileLists(LightWeightBackendManager b_src, LightWeightBackendManager b_dst, RemoteSynchronizationConfig config, CancellationToken token)
+    private static async Task<(IEnumerable<IFileEntry>, IEnumerable<IFileEntry>, IEnumerable<IFileEntry>)> PrepareFileListsAsync(LightWeightBackendManager b_src, LightWeightBackendManager b_dst, RemoteSynchronizationConfig config, CancellationToken token)
     {
         IEnumerable<IFileEntry> files_src, files_dst;
 

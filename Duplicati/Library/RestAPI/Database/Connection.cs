@@ -433,7 +433,9 @@ namespace Duplicati.Server.Database
                 provider?.GetRequiredService<EventPollNotify>()?.SignalNewEvent();
                 provider?.GetRequiredService<EventPollNotify>()?.SignalServerSettingsUpdated();
                 // If throttle options were changed, update now
-                provider?.GetRequiredService<IQueueRunnerService>()?.GetCurrentTask()?.UpdateThrottleSpeeds(ApplicationSettings.UploadSpeedLimit, ApplicationSettings.DownloadSpeedLimit);
+                var currentTask = provider?.GetRequiredService<IQueueRunnerService>()?.GetCurrentTask();
+                if (currentTask != null)
+                    _ = currentTask.UpdateThrottleSpeedsAsync(ApplicationSettings.UploadSpeedLimit, ApplicationSettings.DownloadSpeedLimit);
                 provider?.GetRequiredService<LiveControls>()?.UpdatePowerModeProvider();
             }
 

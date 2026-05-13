@@ -84,10 +84,10 @@ public class RemoteControllerService(Connection connection, IRemoteControllerHan
             config.RefreshSettingsBy,
             forceConnect,
             CancellationToken.None,
-            controllerHandler.OnConnect,
-            controllerHandler.ReKey,
-            controllerHandler.OnControl,
-            controllerHandler.OnMessage
+            controllerHandler.OnConnectAsync,
+            controllerHandler.ReKeyAsync,
+            controllerHandler.OnControlAsync,
+            controllerHandler.OnMessageAsync
         );
 
         _keepRemoteConnection.StateChanged += (_, _) => eventPollNotify.SignalRemoteControlUpdate();

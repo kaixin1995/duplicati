@@ -96,7 +96,7 @@ public class RemoteControllerRegistrationService(Connection connection, IHttpCli
     public string? RegistrationUrl { get; private set; }
 
     /// <inheritdoc />
-    public Task RegisterMachine(string registrationUrl)
+    public Task RegisterMachineAsync(string registrationUrl)
     {
         if (_registerForRemote != null)
             throw new InvalidOperationException("Already registering");
@@ -111,7 +111,7 @@ public class RemoteControllerRegistrationService(Connection connection, IHttpCli
             try
             {
                 _registerForRemote = new RegisterForRemote(registrationUrl, httpClientFactory.CreateClient(), _operationCancellation.Token);
-                var data = await _registerForRemote.Register(maxRetries: 3, retryInterval: TimeSpan.FromSeconds(5));
+                var data = await _registerForRemote.RegisterAsync(maxRetries: 3, retryInterval: TimeSpan.FromSeconds(5));
 
                 // Make the link visible to outside
                 if (data.RegistrationData != null)
@@ -120,7 +120,7 @@ public class RemoteControllerRegistrationService(Connection connection, IHttpCli
                 eventPollNotify.SignalRemoteControlUpdate();
 
                 // Grab the claim data once it is returned
-                var claimData = await _registerForRemote.Claim();
+                var claimData = await _registerForRemote.ClaimAsync();
                 connection.ApplicationSettings.RemoteControlConfig = JsonSerializer.Serialize(new RemoteControlConfig
                 {
                     Token = claimData.JWT,
@@ -131,7 +131,7 @@ public class RemoteControllerRegistrationService(Connection connection, IHttpCli
 
                 // If settings are present in the claim data, apply them via the control handler
                 if (claimData.Settings != null && claimData.Settings.Count > 0)
-                    await controllerHandler.OnControl(KeepRemoteConnection.ControlMessage.CreateSettingsControlMessage(claimData.Settings));
+                    await controllerHandler.OnControlAsync(KeepRemoteConnection.ControlMessage.CreateSettingsControlMessage(claimData.Settings));
 
                 // Automatically connect after we are registered
                 if (remoteController.CanEnable)
@@ -145,7 +145,7 @@ public class RemoteControllerRegistrationService(Connection connection, IHttpCli
     }
 
     /// </inheritdoc>
-    public Task WaitForRegistration()
+    public Task WaitForRegistrationAsync()
     {
         if (_registrationTask == null)
             throw new InvalidOperationException("Not registering");

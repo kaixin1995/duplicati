@@ -112,7 +112,7 @@ internal partial class BackendManager : IBackendManager
     /// </summary>
     /// <param name="op">The operation to queue</param>
     /// <returns>An awaitable task</returns>
-    private async Task QueueTask(PendingOperationBase op)
+    private async Task QueueTaskAsync(PendingOperationBase op)
     {
         if (queueRunner.IsCompleted)
         {
@@ -173,8 +173,8 @@ internal partial class BackendManager : IBackendManager
     public async Task DeleteAsync(string remotename, long size, bool waitForComplete, CancellationToken cancelToken)
     {
         var op = new DeleteOperation(remotename, size, context, waitForComplete, cancelToken);
-        await QueueTask(op).ConfigureAwait(false);
-        await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -187,8 +187,8 @@ internal partial class BackendManager : IBackendManager
     public async Task SetObjectLockUntilAsync(string remotename, DateTime lockUntilUtc, CancellationToken cancelToken)
     {
         var op = new SetObjectLockOperation(remotename, lockUntilUtc, context, cancelToken);
-        await QueueTask(op).ConfigureAwait(false);
-        await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -200,8 +200,8 @@ internal partial class BackendManager : IBackendManager
     public async Task<DateTime?> GetObjectLockUntilAsync(string remotename, CancellationToken cancelToken)
     {
         var op = new GetObjectLockOperation(remotename, context, cancelToken);
-        await QueueTask(op).ConfigureAwait(false);
-        return await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        return await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -219,8 +219,8 @@ internal partial class BackendManager : IBackendManager
             Hash = hash,
             Decrypt = true
         };
-        await QueueTask(op).ConfigureAwait(false);
-        (var file, var _, var _) = await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        (var file, var _, var _) = await op.GetResultAsync().ConfigureAwait(false);
         return file;
     }
 
@@ -239,8 +239,8 @@ internal partial class BackendManager : IBackendManager
             Hash = hash,
             Decrypt = false
         };
-        await QueueTask(op).ConfigureAwait(false);
-        (var file, var _, var _) = await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        (var file, var _, var _) = await op.GetResultAsync().ConfigureAwait(false);
         return file;
     }
 
@@ -252,8 +252,8 @@ internal partial class BackendManager : IBackendManager
     public async Task<IQuotaInfo?> GetQuotaInfoAsync(CancellationToken cancelToken)
     {
         var op = new QuotaInfoOperation(context, cancelToken);
-        await QueueTask(op).ConfigureAwait(false);
-        return await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        return await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -271,8 +271,8 @@ internal partial class BackendManager : IBackendManager
             Hash = hash,
             Decrypt = true
         };
-        await QueueTask(op).ConfigureAwait(false);
-        (var file, var downloadHash, var downloadSize) = await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        (var file, var downloadHash, var downloadSize) = await op.GetResultAsync().ConfigureAwait(false);
         return (file, downloadHash, downloadSize);
     }
 
@@ -284,8 +284,8 @@ internal partial class BackendManager : IBackendManager
     public async Task<IEnumerable<Interface.IFileEntry>> ListAsync(CancellationToken cancelToken)
     {
         var op = new ListOperation(context, cancelToken);
-        await QueueTask(op).ConfigureAwait(false);
-        return await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        return await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -314,8 +314,8 @@ internal partial class BackendManager : IBackendManager
 
         // Prepare encryption
         op.StartEncryptionAndHashing();
-        await QueueTask(op).ConfigureAwait(false);
-        await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -339,8 +339,8 @@ internal partial class BackendManager : IBackendManager
 
         // Sets the task as already completed
         op.StartEncryptionAndHashing();
-        await QueueTask(op).ConfigureAwait(false);
-        await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -351,7 +351,7 @@ internal partial class BackendManager : IBackendManager
     /// <returns>A task that completes when the messages are flushed.</returns>
     public async Task FlushPendingMessagesAsync(LocalDatabase database, CancellationToken cancellationToken)
     {
-        await context.Database.FlushPendingMessages(database, cancellationToken).ConfigureAwait(false);
+        await context.Database.FlushPendingMessagesAsync(database, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -362,8 +362,8 @@ internal partial class BackendManager : IBackendManager
     public async Task WaitForEmptyAsync(CancellationToken cancellationToken)
     {
         var op = new WaitForEmptyOperation(context, cancellationToken);
-        await QueueTask(op).ConfigureAwait(false);
-        await op.GetResult().ConfigureAwait(false);
+        await QueueTaskAsync(op).ConfigureAwait(false);
+        await op.GetResultAsync().ConfigureAwait(false);
     }
 
     /// <summary>
@@ -385,7 +385,7 @@ internal partial class BackendManager : IBackendManager
     /// </summary>
     /// <param name="database">The database to write pending messages to.</param>
     /// <returns>A task that completes when the runner is stopped and messages are flushed.</returns>
-    public async Task StopRunnerAndFlushMessages(LocalDatabase database)
+    public async Task StopRunnerAndFlushMessagesAsync(LocalDatabase database)
     {
         await requestChannel.RetireAsync().ConfigureAwait(false);
         await FlushPendingMessagesAsync(database, CancellationToken.None).ConfigureAwait(false);
