@@ -69,10 +69,10 @@ public class BackupExclusionAttributeTests : BasicSetupHelper
     private static Task<bool> InvokeHasBackupExclusionAttributeAsync(ISourceProviderEntry entry)
     {
         var method = typeof(FileEnumerationProcess).GetMethod(
-            "HasBackupExclusionAttribute",
+            "HasBackupExclusionAttributeAsync",
             BindingFlags.NonPublic | BindingFlags.Static);
 
-        Assert.That(method, Is.Not.Null, "HasBackupExclusionAttribute not found via reflection");
+        Assert.That(method, Is.Not.Null, "HasBackupExclusionAttributeAsync not found via reflection");
         return (Task<bool>)method!.Invoke(null, [entry, CancellationToken.None])!;
     }
 
