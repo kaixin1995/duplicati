@@ -156,11 +156,10 @@ internal partial class BackendManager : IBackendManager
     /// <param name="tmpfile">The file to decrypt</param>
     /// <param name="filename">The name of the file. Used for detecting encryption algorithm if not specified in options or if it differs from the options</param>
     /// <param name="options">The Duplicati options</param>
+    /// <param name="dispose">True if the input file should be disposed after decryption</param>
     /// <returns>The decrypted file</returns>
-    public TempFile DecryptFile(TempFile volume, string volume_name, Options options)
-    {
-        return GetOperation.DecryptFile(volume, volume_name, options);
-    }
+    public TempFile DecryptFile(TempFile volume, string volume_name, Options options, bool dispose)
+        => GetOperation.DecryptFile(volume, volume_name, options, dispose);
 
     /// <summary>
     /// Deletes a remote file
@@ -438,6 +437,41 @@ internal partial class BackendManager : IBackendManager
         // Return the last result
         yield return (prevResult.File, prevResult.Hash, prevResult.Size, prevVolume.Name);
         prevResult.File.Dispose();
+    }
+
+    /// <summary>
+    /// Performs a direct download of the files specified, with pre-fetch to overlap the download and processing
+    /// </summary>
+    /// <param name="volumes">The volumes to download</param>
+    /// <param name="cancelToken">The cancellation token</param>
+    /// <returns>The downloaded files and the volume they came from</returns>
+    public async IAsyncEnumerable<(TempFile File, string Name)> GetFilesOverlappedDirectAsync(IEnumerable<IRemoteVolume> volumes, [EnumeratorCancellation] CancellationToken cancelToken)
+    {
+        var prevVolume = volumes.FirstOrDefault();
+        if (prevVolume == null)
+            yield break;
+
+        // Get the first volume, so we do not have pending parallel transfers
+        var prevResult = await GetDirectAsync(prevVolume.Name, prevVolume.Hash, prevVolume.Size, cancelToken)
+            .ConfigureAwait(false);
+
+        foreach (var volume in volumes.Skip(1))
+        {
+            // Prepare the next volume, while processing the previous one
+            var nextTask = GetDirectAsync(volume.Name, volume.Hash, volume.Size, cancelToken);
+
+            // Assuming we do not throw while yielding, otherwise we would need to dispose nextTask
+            yield return (prevResult, prevVolume.Name);
+            prevResult.Dispose();
+
+            // Set up for next iteration
+            prevVolume = volume;
+            prevResult = await nextTask.ConfigureAwait(false);
+        }
+
+        // Return the last result
+        yield return (prevResult, prevVolume.Name);
+        prevResult.Dispose();
     }
 
     /// <summary>

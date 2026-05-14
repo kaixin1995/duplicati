@@ -234,9 +234,10 @@ namespace Duplicati.Library.Main.Operation
             }
 
             var isFirstFilelist = true;
-            await foreach (var (tmpfile, hash, size, name) in backendManager.GetFilesOverlappedAsync(filelistWork, m_result.TaskControl.ProgressToken).ConfigureAwait(false))
+            // At this point, we do not know the hashing used to verify the files, so we need to use direct download, and manually decrypt the files
+            // so we can calculate the hash AFTER we have read the manifest content and updated the options
+            await foreach (var (tmpencfile, name) in backendManager.GetFilesOverlappedDirectAsync(filelistWork, m_result.TaskControl.ProgressToken).ConfigureAwait(false))
             {
-                var entry = new RemoteVolume(name, hash, size);
                 try
                 {
                     if (!await m_result.TaskControl.ProgressRendevouzAsync().ConfigureAwait(false))
@@ -261,16 +262,10 @@ namespace Duplicati.Library.Main.Operation
                         Logging.Log.WriteVerboseMessage(LOGTAG, "ProcessingFilelistVolumes", "Processing filelist volume {0} of {1}", progress, filelistWork.Count);
                     }
 
-                    using (tmpfile)
+                    using (var tmpfile = backendManager.DecryptFile(tmpencfile, name, m_options, dispose: false))
                     {
                         isFirstFilelist = false;
-
-                        if (!string.IsNullOrWhiteSpace(hash) && size > 0)
-                            await restoredb
-                                .UpdateRemoteVolumeAsync(entry.Name, RemoteVolumeState.Verified, size, hash, m_result.TaskControl.ProgressToken)
-                                .ConfigureAwait(false);
-
-                        var parsed = VolumeBase.ParseFilename(entry.Name);
+                        var parsed = VolumeBase.ParseFilename(name);
 
                         using var stream = new FileStream(tmpfile, FileMode.Open, FileAccess.Read, FileShare.Read);
                         using var compressor = DynamicLoader.CompressionLoader.GetModule(parsed.CompressionModule, stream, ArchiveMode.Read, m_options.RawOptions);
@@ -283,9 +278,21 @@ namespace Duplicati.Library.Main.Operation
                             hasUpdatedOptions = true;
                         }
 
+                        var size = new FileInfo(tmpencfile).Length;
+                        string hash;
+                        using (var fs = File.OpenRead(tmpencfile))
+                        using (var hasher = HashFactory.CreateHasher(m_options.FileHashAlgorithm))
+                            hash = Convert.ToBase64String(hasher.ComputeHash(fs));
+
+                        if (!string.IsNullOrWhiteSpace(hash) && size > 0)
+                            await restoredb
+                                .UpdateRemoteVolumeAsync(name, RemoteVolumeState.Verified, size, hash, m_result.TaskControl.ProgressToken)
+                                .ConfigureAwait(false);
+
+
                         // Create timestamped operations based on the file timestamp
                         var filesetid = await restoredb
-                            .CreateFilesetAsync(volumeIds[entry.Name], parsed.Time, m_result.TaskControl.ProgressToken)
+                            .CreateFilesetAsync(volumeIds[name], parsed.Time, m_result.TaskControl.ProgressToken)
                             .ConfigureAwait(false);
 
                         await RecreateFilesetFromRemoteListAsync(restoredb, compressor, filesetid, m_options, filter, m_result.TaskControl.ProgressToken)
@@ -294,7 +301,7 @@ namespace Duplicati.Library.Main.Operation
                 }
                 catch (Exception ex)
                 {
-                    Logging.Log.WriteWarningMessage(LOGTAG, "FileProcessingFailed", ex, "Failed to process file: {0}", entry.Name);
+                    Logging.Log.WriteWarningMessage(LOGTAG, "FileProcessingFailed", ex, "Failed to process file: {0}", name);
                     if (ex.IsAbortException())
                     {
                         m_result.EndTime = DateTime.UtcNow;

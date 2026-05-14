@@ -332,7 +332,7 @@ namespace Duplicati.Library.Main
 
         public Options(Dictionary<string, string?> options)
         {
-            m_options = options;
+            m_options = new Dictionary<string, string?>(options);
         }
 
         public Dictionary<string, string?> RawOptions => m_options;

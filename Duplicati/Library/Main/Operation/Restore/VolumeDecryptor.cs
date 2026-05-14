@@ -76,7 +76,7 @@ namespace Duplicati.Library.Main.Operation.Restore
 
                         // Decrypt the volume.
                         sw_decrypt?.Start();
-                        var tmpfile = backend.DecryptFile(volume, volume_name, options);
+                        var tmpfile = backend.DecryptFile(volume, volume_name, options, dispose: true);
                         sw_decrypt?.Stop();
                         Logging.Log.WriteExplicitMessage(LOGTAG, "DecryptVolume", null, "Decrypted volume {0} (ID: {1})", volume_name, volume_id);
 
