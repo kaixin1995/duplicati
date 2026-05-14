@@ -206,7 +206,7 @@ namespace Duplicati.UnitTest
 #endif
 
             // Choose a dblock size that is small enough so that more than one volume is needed.
-            Dictionary<string, string> options = new Dictionary<string, string>(this.TestOptions)
+            var options = new Dictionary<string, string>(this.TestOptions)
             {
                 ["dblock-size"] = "10mb",
                 ["disable-file-scanner"] = "true",
@@ -245,9 +245,9 @@ namespace Duplicati.UnitTest
 
             // Set the keep-time option so that the threshold lies between the first and second backups
             // and run the delete operation.
+            options["keep-time"] = $"{(int)((DateTime.Now - firstBackupTime).TotalSeconds - (secondBackupTime - firstBackupTime).TotalSeconds / 2)}s";
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                options["keep-time"] = $"{(int)((DateTime.Now - firstBackupTime).TotalSeconds - (secondBackupTime - firstBackupTime).TotalSeconds / 2)}s";
                 TestUtils.AssertResults(await c.DeleteAsync());
 
                 var filesets = (await c.ListAsync()).Filesets.ToList();
@@ -260,16 +260,20 @@ namespace Duplicati.UnitTest
 
             // Run another partial backup. We will then verify that a full backup is retained
             // even when all the "recent" backups are partial.
+            DateTime fourthBackupTime;
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
                 (var backupResults, _) = await this.RunPartialBackupAsync(c).ConfigureAwait(false);
                 Assert.AreEqual(0, backupResults.Errors.Count());
                 Assert.AreEqual(1, backupResults.Warnings.Count());
-                var fourthBackupTime = (await c.ListAsync()).Filesets.First().Time;
+                fourthBackupTime = (await c.ListAsync()).Filesets.First().Time;
+            }
 
-                // Set the keep-time option so that the threshold lies after the most recent full backup
-                // and run the delete operation.
-                options["keep-time"] = "1s";
+            // Set the keep-time option so that the threshold lies after the most recent full backup
+            // and run the delete operation.
+            options["keep-time"] = "1s";
+            using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
+            {
                 TestUtils.AssertResults(await c.DeleteAsync());
 
                 var filesets = (await c.ListAsync()).Filesets.ToList();
@@ -292,7 +296,7 @@ namespace Duplicati.UnitTest
 #endif
 
             // Choose a dblock size that is small enough so that more than one volume is needed.
-            Dictionary<string, string> options = new Dictionary<string, string>(this.TestOptions)
+            var options = new Dictionary<string, string>(this.TestOptions)
             {
                 ["dblock-size"] = "10mb",
                 ["disable-file-scanner"] = "true",
@@ -333,9 +337,9 @@ namespace Duplicati.UnitTest
             }
 
             // Run a partial backup.
+            options["keep-versions"] = "2";
             using (var c = new Controller("file://" + this.TARGETFOLDER, options, null))
             {
-                options["keep-versions"] = "2";
                 (var backupResults, _) = await this.RunPartialBackupAsync(c).ConfigureAwait(false);
                 Assert.AreEqual(0, backupResults.Errors.Count());
                 Assert.AreEqual(1, backupResults.Warnings.Count());
