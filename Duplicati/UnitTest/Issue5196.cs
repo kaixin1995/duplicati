@@ -20,6 +20,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,6 +36,8 @@ public class Issue5196 : BasicSetupHelper
     [Category("Targeted")]
     public async Task RunCommandsAsync()
     {
+        List<Library.Interface.IListResultFileset> versions;
+
         var testopts = TestOptions;
         testopts["upload-unchanged-backups"] = "true";
         testopts["blocksize"] = "50kb";
@@ -60,32 +63,36 @@ public class Issue5196 : BasicSetupHelper
             if (pr.KnownFileSize == 0 || pr.KnownFileCount != 4 || pr.BackupListCount != 2)
                 throw new Exception(string.Format("Failed to get stats from remote backend: {0}, {1}, {2}", pr.KnownFileSize, pr.KnownFileCount, pr.BackupListCount));
 
-            var versions = (await c.ListAsync()).Filesets.ToList();
-
-            using (var tempDbPath = new Library.Utility.TempFile())
-            {
-                testopts["dbpath"] = tempDbPath;
-                testopts["repair-only-paths"] = "true";
-                testopts.Remove("blocksize");
-                testopts["time"] = Library.Utility.Utility.SerializeDateTime(versions[0].Time);
-                var rcr1 = await c.UpdateDatabaseWithVersionsAsync();
-
-                testopts["time"] = Library.Utility.Utility.SerializeDateTime(versions[1].Time);
-                var rcr2 = await c.UpdateDatabaseWithVersionsAsync();
-
-                File.Delete(tempDbPath);
-                testopts["repair-only-paths"] = "true";
-                testopts["blocksize"] = "25kb";
-                try
-                {
-                    await c.UpdateDatabaseWithVersionsAsync();
-                    throw new Exception("Expected an exception when changing blocksize");
-                }
-                catch (InvalidManifestException)
-                {
-                }
-            }
+            versions = (await c.ListAsync()).Filesets.ToList();
         }
 
+
+        using (var tempDbPath = new Library.Utility.TempFile())
+        {
+            testopts["dbpath"] = tempDbPath;
+            testopts["repair-only-paths"] = "true";
+            testopts.Remove("blocksize");
+
+            testopts["time"] = Library.Utility.Utility.SerializeDateTime(versions[0].Time);
+            using (var c = new Library.Main.Controller("file://" + TARGETFOLDER, testopts, null))
+                await c.UpdateDatabaseWithVersionsAsync();
+
+            testopts["time"] = Library.Utility.Utility.SerializeDateTime(versions[1].Time);
+            using (var c = new Library.Main.Controller("file://" + TARGETFOLDER, testopts, null))
+                await c.UpdateDatabaseWithVersionsAsync();
+
+            File.Delete(tempDbPath);
+            testopts["repair-only-paths"] = "true";
+            testopts["blocksize"] = "25kb";
+            try
+            {
+                using (var c = new Library.Main.Controller("file://" + TARGETFOLDER, testopts, null))
+                    await c.UpdateDatabaseWithVersionsAsync();
+                throw new Exception("Expected an exception when changing blocksize");
+            }
+            catch (InvalidManifestException)
+            {
+            }
+        }
     }
 }

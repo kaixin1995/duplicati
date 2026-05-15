@@ -160,35 +160,38 @@ namespace Duplicati.Library.Main.Operation
                     return;
 
                 using (var tmpfile = await backendManager.GetAsync(firstEntry.File.Name, null, firstEntry.File.Size, cancellationToken).ConfigureAwait(false))
-                using (var rd = new FilesetVolumeReader(RestoreHandler.GetCompressionModule(firstEntry.File.Name), tmpfile, m_options))
-                    if (simpleList)
-                    {
-                        m_result.SetResult(
-                            numberSeq.Take(1),
-                            (from n in rd.Files
-                             where Library.Utility.FilterExpression.Matches(filter, n.Path)
-                             orderby n.Path
-                             select new ListResultFile(n.Path, new long[] { n.Size }))
-                                  .ToArray()
-                        );
+                {
+                    VolumeReaderBase.UpdateOptionsFromManifest(RestoreHandler.GetCompressionModule(firstEntry.File.Name), tmpfile, m_options);
+                    using (var rd = new FilesetVolumeReader(RestoreHandler.GetCompressionModule(firstEntry.File.Name), tmpfile, m_options))
+                        if (simpleList)
+                        {
+                            m_result.SetResult(
+                                numberSeq.Take(1),
+                                (from n in rd.Files
+                                 where Library.Utility.FilterExpression.Matches(filter, n.Path)
+                                 orderby n.Path
+                                 select new ListResultFile(n.Path, new long[] { n.Size }))
+                                      .ToArray()
+                            );
 
-                        return;
-                    }
-                    else
-                    {
-                        res = rd.Files
-                              .Where(x => Library.Utility.FilterExpression.Matches(filter, x.Path))
-                              .ToDictionary(
-                                    x => x.Path,
-                                    y =>
-                                    {
-                                        var lst = new List<long>();
-                                        lst.Add(y.Size);
-                                        return lst;
-                                    },
-                                    Library.Utility.Utility.ClientFilenameStringComparer
-                              );
-                    }
+                            return;
+                        }
+                        else
+                        {
+                            res = rd.Files
+                                  .Where(x => Library.Utility.FilterExpression.Matches(filter, x.Path))
+                                  .ToDictionary(
+                                        x => x.Path,
+                                        y =>
+                                        {
+                                            var lst = new List<long>();
+                                            lst.Add(y.Size);
+                                            return lst;
+                                        },
+                                        Library.Utility.Utility.ClientFilenameStringComparer
+                                  );
+                        }
+                }
 
                 long flindex = 1;
                 var filteredListMap = filteredList.ToDictionary(x => x.Value.File.Name, x => x.Value);
